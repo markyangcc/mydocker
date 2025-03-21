@@ -4,7 +4,7 @@ GO  = go
 .PHONY: build
 
 build:
-	$(GO) build -ldflags "$(LDFLAGS)" -o $(APP) 
+	$(GO) build -ldflags "$(LDFLAGS)" -o $(APP)
 
 clean:
 	$(GO) clean
