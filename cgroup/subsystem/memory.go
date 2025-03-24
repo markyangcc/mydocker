@@ -35,9 +35,10 @@ func (s *MemorySubsystem) Set(path string, res *cgroup.Resource) error {
 
 func (s *MemorySubsystem) Remove(path string) error {
 	fullPath := cgroup.GetV2ResourcePath(path, cgroup.V2MemoryMax)
+	nolimit := "max"
 
-	if err := os.RemoveAll(fullPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove cgroup %v: %v", fullPath, err)
+	if err := os.WriteFile(fullPath, []byte(nolimit), 0655); err != nil {
+		return fmt.Errorf("failed to set memory to cgroup %v: %v", fullPath, err)
 	}
 	return nil
 }
