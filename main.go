@@ -24,6 +24,11 @@ func main() {
 
 	app.Before = func(context *cli.Context) error {
 		logrus.SetOutput(os.Stdout)
+
+		// check root permission
+		if os.Getuid() != 0 {
+			return cli.NewExitError("Need run with root permission", 1)
+		}
 		return nil
 	}
 

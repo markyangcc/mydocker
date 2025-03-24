@@ -13,9 +13,13 @@ func Run(tty bool, command string, res *subsystem.Resource) {
 		logrus.Error(err)
 	}
 
-	cm := cgroup.NewCgroupManager("mydocker-cgroup")
-	cm.Set(res)
-	cm.Apply(parent.Process.Pid)
+	// 添加 cgroup 资源限制
+	if res != nil {
+		logrus.Info("aaa", res, parent.Process.Pid)
+		cm := cgroup.NewCgroupManager("mydocker-cgroup")
+		cm.Set(res)
+		cm.Apply(parent.Process.Pid)
+	}
 
 	if err := parent.Wait(); err != nil {
 		logrus.Error(err)

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/markyangcc/mydocker/cgroup/subsystem"
 	"github.com/markyangcc/mydocker/container"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -23,8 +24,15 @@ var runCommand = cli.Command{
 			return fmt.Errorf("missing container command")
 		}
 		entryCmd := context.Args().Get(0)
+
 		tty := context.Bool("ti")
-		Run(tty, entryCmd)
+		resConf := &subsystem.Resource{
+			MemoryLimit: context.String("m"),
+			CpuSet:      context.String("cpuset"),
+			CpuShare:    context.String("cpushare"),
+		}
+
+		Run(tty, entryCmd, resConf)
 		return nil
 	},
 }
