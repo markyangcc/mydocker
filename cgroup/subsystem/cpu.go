@@ -3,8 +3,7 @@ package subsystem
 import (
 	"fmt"
 	"os"
-
-	"github.com/markyangcc/mydocker/cgroup"
+	"strconv"
 )
 
 type CpuSubsystem struct {
@@ -14,17 +13,17 @@ func (s *CpuSubsystem) Name() string {
 	return "cpu"
 }
 
-func (s *CpuSubsystem) Apply(path string, pid string) error {
-	fullPath := cgroup.GetV2ResourcePath(path, cgroup.V2CPUShare)
+func (s *CpuSubsystem) Apply(path string, pid int) error {
+	fullPath := GetV2ResourcePath(path, V2CPUShare)
 
-	if err := os.WriteFile(fullPath, []byte(pid), 0655); err != nil {
+	if err := os.WriteFile(fullPath, []byte(strconv.Itoa(pid)), 0655); err != nil {
 		return fmt.Errorf("failed to add process %v to cgroup %v: %v", pid, fullPath, err)
 	}
 	return nil
 }
 
-func (s *CpuSubsystem) Set(path string, res *cgroup.Resource) error {
-	fullPath := cgroup.GetV2ResourcePath(path, cgroup.V2CPUShare)
+func (s *CpuSubsystem) Set(path string, res *Resource) error {
+	fullPath := GetV2ResourcePath(path, V2CPUShare)
 	share := res.CpuShare
 
 	if err := os.WriteFile(fullPath, []byte(share), 0655); err != nil {
@@ -34,7 +33,7 @@ func (s *CpuSubsystem) Set(path string, res *cgroup.Resource) error {
 }
 
 func (s *CpuSubsystem) Remove(path string) error {
-	fullPath := cgroup.GetV2ResourcePath(path, cgroup.V2CPUShare)
+	fullPath := GetV2ResourcePath(path, V2CPUShare)
 	nolimit := "100" // default value 100
 
 	if err := os.WriteFile(fullPath, []byte(nolimit), 0655); err != nil {
