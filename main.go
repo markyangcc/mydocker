@@ -35,9 +35,13 @@ func main() {
 	// unmount /proc in RunContainerInitProcess()
 	app.After = func(context *cli.Context) error {
 		var err error
-		if err = syscall.Unmount("/proc", syscall.MNT_DETACH); err != nil {
-			logrus.Errorf("failed to umount /proc: %v", err)
+		// it's ugly code here
+		if _, err = os.Stat("/proc/self"); err != nil && os.IsNotExist(err) {
+			if err = syscall.Unmount("/proc", syscall.MNT_DETACH); err != nil {
+				logrus.Errorf("failed to umount /proc: %v", err)
+			}
 		}
+
 		return err
 	}
 
