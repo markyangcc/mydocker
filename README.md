@@ -45,4 +45,23 @@ cgroup v2 下的对应接口
 72821
 ```
 
-内存不生效的原因则是，cgroup内存限制指的新分配内存，也就是增量，因为 stress 再启动时已经完成内存分配，运行时不再分配内存，所以会看到内存限制不生效情况。
+内存不生效的原因则是，cgroup 内存限制指的新分配内存，也就是增量，因为 stress 再启动时已经完成内存分配，运行时不再分配内存，所以会看到内存限制不生效情况。
+
+## 3.3 Pipe & Env
+测试命令，
+```shell
+sudo ./mydocker run -ti --cpushare 8000 --cpuset 0-1 -m 50m /usr/bin/stress --vm-bytes 30m --vm-keep --vm 1
+```
+
+
+需要注意的点，必须关闭写端以触发 EOF，否则 io.ReadAll 将永久阻塞等待数据结束。​因为我们在读端调用的是 io.ReadAll() API，只有在读取到 EOF 才返回，这和调用 os.Read() API 不一样。
+```golang
+// reader
+	data, err := io.ReadAll(pipe)
+
+
+//writer
+    pipe.Close()
+```
+
+可喜可贺！本节通过先创建子进程，然后 pending 住(从管道中接收需要执行的命令是阻塞的)，接着子进程通过 syscall.Exec 替换自己的方式实现创建真正的子进程。这种方式解决了 3.2 提到的 stress worker 进程不会被纳入 cgroup 管理的问题。

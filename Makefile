@@ -4,15 +4,11 @@ GO  = go
 .PHONY: build
 
 build:
-	$(GO) build -ldflags "$(LDFLAGS)" -o $(APP)
+	@$(GO) build -gcflags "all=-N -l" -ldflags "$(LDFLAGS)" -o $(APP)
 
 clean:
-	$(GO) clean
-
-
-run: build
-	./$(APP)
+	@$(GO) clean
 
 test:
-	$(GO) test -v ./...
+	@$(GO) test -v ./...
 

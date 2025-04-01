@@ -12,3 +12,6 @@
 ```
 
 
+
+parent ----->   init
+ read             write
