@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -13,10 +14,6 @@ import (
 )
 
 func RunContainerInitProcess() error {
-
-	// disable for now
-	// defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
-	// syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
 
 	command, err := readCommandFromPipe()
 	if err != nil {
@@ -27,12 +24,14 @@ func RunContainerInitProcess() error {
 		return errors.New("received empty command")
 	}
 
+	err = setupMount()
+	if err != nil {
+		return fmt.Errorf("setup mount failed: %w", err)
+	}
+
 	execPath, err := exec.LookPath(command[0])
 	if err != nil {
 		return fmt.Errorf("executable lookup failed: %w", err)
-	}
-	if err != nil {
-		return fmt.Errorf("resolving executable path failed: %w", err)
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -69,4 +68,65 @@ func readCommandFromPipe() ([]string, error) {
 	}
 
 	return strings.Fields(string(data)), nil
+}
+
+func pivotRoot(root string) error {
+	if err := syscall.Mount(root, root, "bind", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
+		return fmt.Errorf("mounting failed: %w", err)
+	}
+	pivotDir := filepath.Join(root, ".pivot_root")
+	if err := os.MkdirAll(pivotDir, 0755); err != nil {
+		return fmt.Errorf("creating pivot dir failed: %w", err)
+	}
+
+	if err := syscall.PivotRoot(root, pivotDir); err != nil {
+		return fmt.Errorf("pivot root failed: %w", err)
+	}
+
+	if err := syscall.Chdir("/"); err != nil {
+		return fmt.Errorf("chdir to / failed: %w", err)
+	}
+
+	// umount the old root
+	pivotDir = filepath.Join("/", ".pivot_root")
+	if err := syscall.Unmount(pivotDir, syscall.MNT_DETACH); err != nil {
+		return fmt.Errorf("unmounting pivot dir failed: %w", err)
+	}
+
+	if err := os.Remove(pivotDir); err != nil {
+		return fmt.Errorf("removing pivot dir failed: %w", err)
+	}
+
+	return nil
+}
+
+func setupMount() error {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current working directory: %v", err)
+
+	}
+	logrus.Infof("current working directory: %s", pwd)
+	pivotRoot(pwd)
+
+	// TODO: disable for now
+	// if err := syscall.Chroot(pwd); err != nil {
+	// 	return fmt.Errorf("chroot to / failed: %v", err)
+	// }
+
+	if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
+		return fmt.Errorf("setting mount propagation to private failed: %v", err)
+	}
+
+	// mount procm
+	err = syscall.Mount("proc", "/proc", "proc", syscall.MS_NOEXEC|syscall.MS_NOSUID|syscall.MS_NODEV, "")
+	if err != nil {
+		return fmt.Errorf("failed to mount /proc: %v", err)
+	}
+	err = syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=755")
+	if err != nil {
+		return fmt.Errorf("failed to mount /dev: %v", err)
+	}
+
+	return nil
 }

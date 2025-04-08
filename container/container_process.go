@@ -19,6 +19,8 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File, error) {
 			syscall.CLONE_NEWNET | syscall.CLONE_NEWIPC,
 	}
 	cmd.ExtraFiles = []*os.File{readPipe}
+	// Hardcoding for now
+	cmd.Dir = "/tmp/rootfs"
 
 	if tty {
 		cmd.Stdin = os.Stdin

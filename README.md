@@ -16,6 +16,8 @@ app.After = func(context *cli.Context) error {
 }
 ```
 
+> Tips: 等我们实现到 ch4，会将这部分不合理的地方 fix 掉。目前可以使用这种不够优雅方式规避。
+
 ## 3.2 cgroup limit
 cgroup v2 下的对应接口
 * 内存限制: `memory.max`
@@ -47,12 +49,13 @@ cgroup v2 下的对应接口
 
 内存不生效的原因则是，cgroup 内存限制指的新分配内存，也就是增量，因为 stress 再启动时已经完成内存分配，运行时不再分配内存，所以会看到内存限制不生效情况。
 
+> Tips: 等我们实现到 ch3.3，会将这部分不合理的地方 fix 掉。目前我们理解资源限制原理和限制不生效的原因即可。
+
 ## 3.3 Pipe & Env
 测试命令，
 ```shell
 sudo ./mydocker run -ti --cpushare 8000 --cpuset 0-1 -m 50m /usr/bin/stress --vm-bytes 30m --vm-keep --vm 1
 ```
-
 
 需要注意的点，必须关闭写端以触发 EOF，否则 io.ReadAll 将永久阻塞等待数据结束。​因为我们在读端调用的是 io.ReadAll() API，只有在读取到 EOF 才返回，这和调用 os.Read() API 不一样。
 ```golang
@@ -64,4 +67,16 @@ sudo ./mydocker run -ti --cpushare 8000 --cpuset 0-1 -m 50m /usr/bin/stress --vm
     pipe.Close()
 ```
 
-可喜可贺！本节通过先创建子进程，然后 pending 住(从管道中接收需要执行的命令是阻塞的)，接着子进程通过 syscall.Exec 替换自己的方式实现创建真正的子进程。这种方式解决了 3.2 提到的 stress worker 进程不会被纳入 cgroup 管理的问题。
+**可喜可贺！** 本节通过让子进程 pending 住的方式（**此时进程已经在存在了，已经有 pid 了，虽然 `ps` 命令还看不到，可以通过 /proc 文件系统查看**））。在 pending 这段时间设置好容器 cgroup，相当于在容器进程没启动之前就提前限制好 cgroup 资源，接着子进程从管道中接受到父进程发来的民工。通过 syscall.Exec 替换自身，实现启动容器进程。这种方式解决了 3.2 提到的 stress worker 进程不会被纳入 cgroup 管理的问题。
+
+
+## 4.1 rootfs
+目标：需要为容器提供 rootfs, 让容器使用自己的 rootfs 启动。
+
+本章节有一个可以优化的点，在执行 `pivotRoot` 后，推荐将容器内的挂载传播属性设为 MS_PRIVATE，隔离容器与宿主机的挂载点交互，避免容器内操作影响宿主机（如覆盖 /proc、/dev）
+
+```go
+if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
+	return fmt.Errorf("setting mount propagation to private failed: %v", err)
+}
+```
