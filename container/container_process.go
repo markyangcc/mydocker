@@ -3,6 +3,7 @@ package container
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 )
 
@@ -20,7 +21,12 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File, error) {
 	}
 	cmd.ExtraFiles = []*os.File{readPipe}
 	// Hardcoding for now
-	cmd.Dir = "/tmp/rootfs"
+	rootPath := "/tmp"
+	mntPath := filepath.Join(rootPath, "mnt")
+	if err := NewWorkSpace(rootPath); err != nil {
+		return nil, nil, err
+	}
+	cmd.Dir = mntPath
 
 	if tty {
 		cmd.Stdin = os.Stdin

@@ -80,3 +80,12 @@ if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err
 	return fmt.Errorf("setting mount propagation to private failed: %v", err)
 }
 ```
+
+## 4.2 aufs/overlayfs
+因为 aufs 在我的实验环境上(RockyLinux 9.5, RHEL Kernel 5.14)已经不被支持了，所以本姐就替换为使用 overlayfs 代替。
+本节内容很简单，我们先用 linux 命令理解其核心，再转化为 golang 代码即可
+
+```shell
+
+```
+
