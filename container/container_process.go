@@ -1,8 +1,10 @@
 package container
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 )
 
@@ -19,8 +21,18 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File, error) {
 			syscall.CLONE_NEWNET | syscall.CLONE_NEWIPC,
 	}
 	cmd.ExtraFiles = []*os.File{readPipe}
+
 	// Hardcoding for now
-	cmd.Dir = "/tmp/rootfs"
+	contaienrName := "busybox"
+	workspace := filepath.Join(OverlayfsRoot, contaienrName)
+	mergeddir := filepath.Join(OverlayfsRoot, contaienrName, "merged")
+	if err := NewContainerRootfs(contaienrName); err != nil {
+		if err1 := os.RemoveAll(workspace); err1 != nil {
+			return nil, nil, fmt.Errorf("failed to cleanup workspace:%v:%v", err, err1)
+		}
+		return nil, nil, err
+	}
+	cmd.Dir = mergeddir
 
 	if tty {
 		cmd.Stdin = os.Stdin

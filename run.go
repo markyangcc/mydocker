@@ -50,6 +50,11 @@ func Run(tty bool, command []string, res *subsystem.Resource) error {
 		return fmt.Errorf("failed to wait init:%v", err)
 	}
 
+	// do cleanup
+	if err := container.CleanupContainerRootfs("busybox"); err != nil {
+		return fmt.Errorf("failed to cleanup rootfs:%v", err)
+	}
+
 	return nil
 }
 

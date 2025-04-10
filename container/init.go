@@ -107,18 +107,22 @@ func setupMount() error {
 
 	}
 	logrus.Infof("current working directory: %s", pwd)
-	pivotRoot(pwd)
 
-	// TODO: disable for now
-	// if err := syscall.Chroot(pwd); err != nil {
-	// 	return fmt.Errorf("chroot to / failed: %v", err)
-	// }
-
+	// 设置挂载传播，使用 private，这样我们当前 mountNS 与 host mountNS脱钩，两边挂载不会互相传播
+	// 注意：在子进程任何 mount 操作之前调用
 	if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
 		return fmt.Errorf("setting mount propagation to private failed: %v", err)
 	}
 
-	// mount procm
+	pivotRoot(pwd)
+
+	// mount porc/dev
+	if err := os.MkdirAll("/proc", 0755); err != nil {
+		return fmt.Errorf("creating pivot dir failed: %w", err)
+	}
+	if err := os.MkdirAll("/dev", 0755); err != nil {
+		return fmt.Errorf("creating pivot dir failed: %w", err)
+	}
 	err = syscall.Mount("proc", "/proc", "proc", syscall.MS_NOEXEC|syscall.MS_NOSUID|syscall.MS_NODEV, "")
 	if err != nil {
 		return fmt.Errorf("failed to mount /proc: %v", err)

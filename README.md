@@ -80,3 +80,66 @@ if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err
 	return fmt.Errorf("setting mount propagation to private failed: %v", err)
 }
 ```
+
+## 4.2 aufs/overlayfs
+因为 aufs 在我的实验环境上(RockyLinux 9.5, RHEL Kernel 5.14)已经不被 `mount` 支持了，所以本节就替换为使用 overlayfs 代替。
+本节内容很简单，我们先用 linux 命令理解 overlayfs 的原理，再转化为 golang 代码即可，
+
+```shell
+mount -t overlay overlay -o lowerdir=<lowerdir1>:<lowerdir2>:<...>,upperdir=<upperdir>,workdir=<workdir> <mountpoint>
+```
+大概介绍下这里的三个参数：
+
+`lowerdir`：只读目录，多个目录用 ":" 分隔。
+
+`upperdir`：可读写目录，所有对文件的修改（新增/覆盖/删除）会直接作用于该层。当文件被修改时，OverlayFS 会将原文件从 lowerdir 复制到 upperdir，并修改在 upperdir 中的同名文件。
+
+> 若删除，则是在 upperdir 中标记同名文件删除，lowerdir 中文件始终是不变的。（在下文的例子中尝试一下）
+
+`workdir`：必须是空目录，用于 overlayfs 元数据处理。
+
+overlayfs 的原理是，lowerdir 是只读的，当我们将 lowerdir & upperdir 共同 mount 到一个 mountpoint 之后，那么在 mountpoint 目录的任何更改都会直接作用读写层 upperdir。
+
+例如下面的例子：
+
+```shell
+mkdir low1 low2 low3 upper work overlaydir
+touch low1/1.txt low2/2.txt low3/3.txt
+
+mount -t overlay overlay -o lowerdir=./low1:./low2:./low3,upperdir=./upper,workdir=./work overlaydir
+```
+执行完上面的命令后：
+
+```shell
+# ls overlaydir
+1.txt 2.txt 3.txt
+```
+可以看到三个 lower 目录下的内容被合并到 overlaydir 中。
+
+如果这时在 overlaydir 中创建一个新文件，那么这个文件会出现在 upperdir 中，lowerdir 保持不变
+```shell
+touch overlaydir/4.txt
+```
+
+试一试修改下 3.txt 的内容，发现修改会直接作用于 upperdir 中的 3.txt 文件
+```shell
+echo "hello world" > overlaydir/3.txt
+```
+
+试一试删除 2.txt 文件，发现 upperdir 中新出现了一个 2.txt 文件, 但是一个特殊的 0/0 的字符设备，这就是标记删除的方式
+``` shell
+# file 2.txt
+2.txt: character special (0/0)
+```
+
+那么，overlayfs 的简单用法就这样。总结下来就是，我们将 lowerdir 和 upperdir 同意 overlayfs 的方式 mount 到一个 mountpoint 时候，后续对 mountpoint 的修改都会作用到 upperdir 上，lowerdir 是永远不变的。毕竟 overlayfs 的设计里 uppperdir 才是读写层。
+
+
+下面开始正文，直接参阅代码即可，
+1、创建 4 个文件夹，分别是 overlayfs 需要的 lowerdir,upperdir,workdir 和我们 mount 之后的容器 rootfs 目录，这里叫做 "merged"
+2、先将 busybox rootfs 拷贝 overlayfs lowerdir，调用 `mount -t overlay overlay` 即可~
+测试命令，
+```shell
+sduo ./mydocker run -ti sh
+```
+
