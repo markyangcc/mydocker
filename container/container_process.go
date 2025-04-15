@@ -9,7 +9,7 @@ import (
 )
 
 // Retune init's cmd & writePipe
-func NewParentProcess(tty bool) (*exec.Cmd, *os.File, error) {
+func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File, error) {
 	readPipe, writePipe, err := os.Pipe()
 	if err != nil {
 		return nil, nil, err
@@ -33,6 +33,13 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File, error) {
 		return nil, nil, err
 	}
 	cmd.Dir = mergeddir
+
+	// volume mount
+	if volume != "" {
+		if err := VolumeMount(contaienrName, volume); err != nil {
+			return nil, nil, fmt.Errorf("failed to do volume mount:%v", err)
+		}
+	}
 
 	if tty {
 		cmd.Stdin = os.Stdin

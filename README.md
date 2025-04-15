@@ -136,10 +136,31 @@ echo "hello world" > overlaydir/3.txt
 
 
 下面开始正文，直接参阅代码即可，
+
 1、创建 4 个文件夹，分别是 overlayfs 需要的 lowerdir,upperdir,workdir 和我们 mount 之后的容器 rootfs 目录，这里叫做 "merged"
-2、先将 busybox rootfs 拷贝 overlayfs lowerdir，调用 `mount -t overlay overlay` 即可~
+
+2、将 busybox rootfs 拷贝 overlayfs lowerdir，调用 `mount -t overlay overlay` 即可~
+
 测试命令，
 ```shell
 sduo ./mydocker run -ti sh
 ```
 
+## 4.3 volume
+本节要实现的功能是将主机上的目录挂载到容器里，来实现数据持久化功能。
+
+和上一节一样，我们先理解原理，再转化为 golang 代码来实现，
+
+实现原理很简单，我们只需要在 overlayfs 挂载成功后，在将节点的目录通过 bind mount 挂载到 overlayfs 合并后的目录中即可
+``` shell
+# mount --bind [源目录] [目标挂载点]
+# /overlayfs/merged 为 overlayfs 合并之后的目录
+mkdir /overlayfs/merged/host/tmp
+mount --bind /tmp /overlayfs/merged/host/tmp
+```
+解释：命令将节点的 `/tmp` 目录挂载到 overlayfs 里的 `/host/tmp` 目录。这样实现容器的 -v 将 host 目录映射到容器中的功能。
+
+测试命令，将节点的 /tmp 挂载到容器中的 /host/tmp 目录
+```shell
+sudo ./mydocker run -ti -v /tmp:/host/tmp sh
+```

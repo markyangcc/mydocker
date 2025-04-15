@@ -12,10 +12,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Run(tty bool, command []string, res *subsystem.Resource) error {
+func Run(tty bool, command []string, res *subsystem.Resource, volume string) error {
 	logrus.Infof("[run] Run %q with tty %v res %v", command, tty, res)
 
-	parent, writePipe, err := container.NewParentProcess(tty)
+	parent, writePipe, err := container.NewParentProcess(tty, volume)
 	if err != nil {
 		return fmt.Errorf("failed new parent process:%v", err)
 	}
@@ -50,6 +50,12 @@ func Run(tty bool, command []string, res *subsystem.Resource) error {
 		return fmt.Errorf("failed to wait init:%v", err)
 	}
 
+	// umount volume
+	if volume != "" {
+		if err := container.UnmountVolume("busybox", volume); err != nil {
+			return fmt.Errorf("failed to cleanup volume mount:%v", err)
+		}
+	}
 	// do cleanup
 	if err := container.CleanupContainerRootfs("busybox"); err != nil {
 		return fmt.Errorf("failed to cleanup rootfs:%v", err)

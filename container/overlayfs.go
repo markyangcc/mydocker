@@ -140,7 +140,7 @@ func CleanupContainerRootfs(containerName string) error {
 
 	// umount
 	mergedPath := filepath.Join(root, "merged")
-	if err := unmountPath(mergedPath); err != nil {
+	if err := unmountMergedPath(mergedPath); err != nil {
 		return fmt.Errorf("failed to unmount merged directory: %v", err)
 	}
 
@@ -152,7 +152,7 @@ func CleanupContainerRootfs(containerName string) error {
 	return nil
 }
 
-func unmountPath(path string) error {
+func unmountMergedPath(path string) error {
 	if err := exec.Command("umount", path).Run(); err == nil {
 		return nil
 	}

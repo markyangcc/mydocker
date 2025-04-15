@@ -18,6 +18,10 @@ var runCommand = cli.Command{
 			Usage: "enable tty",
 		},
 		cli.StringFlag{
+			Name:  "v",
+			Usage: "volume",
+		},
+		cli.StringFlag{
 			Name:  "m",
 			Usage: "memory limit. For example, -m=100m to limit memory usage",
 		},
@@ -40,6 +44,7 @@ var runCommand = cli.Command{
 			cmdArray = append(cmdArray, arg)
 		}
 		tty := context.Bool("ti")
+		volume := context.String("v")
 
 		resConf := &subsystem.Resource{
 			MemoryLimit: context.String("m"),
@@ -47,7 +52,7 @@ var runCommand = cli.Command{
 			CpuShare:    context.String("cpushare"),
 		}
 
-		if err := Run(tty, cmdArray, resConf); err != nil {
+		if err := Run(tty, cmdArray, resConf, volume); err != nil {
 			return err
 		}
 		return nil
