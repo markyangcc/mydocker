@@ -164,3 +164,18 @@ mount --bind /tmp /overlayfs/merged/host/tmp
 ```shell
 sudo ./mydocker run -ti -v /tmp:/host/tmp sh
 ```
+
+# 4.4 commit
+本节要实现的功能是将容器的运行时产生的数据保存为一个 tarball，即容器的 overlayfs merged 目录所有内容保存到一个 tar 包中。
+
+测试命令，
+```shell
+# start a container
+sudo ./mydocker run -ti sh
+
+# open another terminal, and commit the busybox container
+sudo ./mydocker commit busybox image.tar
+
+# view tarball
+sudo tar -tvf image.tar
+```

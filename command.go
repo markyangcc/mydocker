@@ -68,3 +68,22 @@ var initCommand = cli.Command{
 		return err
 	},
 }
+
+var commitCommand = cli.Command{
+	Name: "commit",
+	Usage: `commit container into image,
+			mydocker commit [container] [tarball]`,
+	Action: func(context *cli.Context) error {
+		if len(context.Args()) < 2 {
+			return fmt.Errorf("missing args,")
+		}
+
+		containerName := context.Args().Get(0)
+		imagePath := context.Args().Get(1)
+
+		if err := container.CommitCOntainer(containerName, imagePath); err != nil {
+			return fmt.Errorf("failed to commit:%v", err)
+		}
+		return nil
+	},
+}
